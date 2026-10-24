@@ -208,7 +208,8 @@ public class MainActivity extends Activity {
         } catch (SecurityException e) { return "BLUETOOTH_CONNECT"; }
         if (Build.VERSION.SDK_INT<=30) {
             LocationManager lm=(LocationManager)getSystemService(LOCATION_SERVICE);
-            if (lm!=null && !lm.isLocationEnabled()) return "LOCATION_DISABLED";
+            if (lm!=null && Build.VERSION.SDK_INT>=28 && !lm.isLocationEnabled())
+                return "LOCATION_DISABLED";
         }
         return "";
     }
@@ -346,8 +347,8 @@ public class MainActivity extends Activity {
         for (Nearby n:matches) {
             BluetoothDevice d=n.device;
             try {
-                String name=d.getName();
-                if (name==null || name.isEmpty()) name="Устройство без имени";
+                String rawName=d.getName();
+                final String name=(rawName==null || rawName.isEmpty())?"Устройство без имени":rawName;
                 String address=d.getAddress();
                 boolean bonded=d.getBondState()==BluetoothDevice.BOND_BONDED;
                 boolean pinned=address.equalsIgnoreCase(Prefs.address(this));
