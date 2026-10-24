@@ -112,6 +112,8 @@ public class MonitorService extends Service {
         if (adapter == null) { report("Bluetooth-адаптер не найден"); return; }
         try {
             if (!adapter.isEnabled()) { report("Bluetooth выключен"); return; }
+            // Поиск активных устройств в интерфейсе может мешать A2DP-соединению.
+            if (adapter.isDiscovering()) { report("Ожидание окончания поиска устройств"); return; }
             if (a2dp == null) { attachProfile(); report("Ожидание A2DP"); return; }
             Set<BluetoothDevice> bonded = adapter.getBondedDevices();
             BluetoothDevice target = null;
