@@ -13,6 +13,11 @@ import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
+import android.widget.ImageView;
+import android.view.View;
+import android.graphics.Typeface;
+import java.util.HashSet;
+import android.graphics.drawable.GradientDrawable;
 import android.location.LocationManager;
 import android.net.Uri;
 import android.os.Build;
@@ -38,7 +43,7 @@ public class MainActivity extends Activity {
     private static final int LIGHT=0xFFF3F7FF, ACCENT=0xFF79E1D1, MUTED=0xFFB7C5D6, RED=0xFFD32F2F;
     private final Handler ui=new Handler(Looper.getMainLooper());
     private final Map<String, Nearby> nearby=new HashMap<>();
-    private TextView status, scanStatus, logs;
+    private TextView status, scanStatus, logs, countLabel, bluetoothPill;
     private LinearLayout devices;
     private BluetoothAdapter adapter;
     private BluetoothProfile a2dp;
@@ -46,6 +51,8 @@ public class MainActivity extends Activity {
     private String currentMissing="";
     private boolean visible=false, receiverRegistered=false, permissionRequestActive=false;
     private boolean firstScan=false, scanning=false;
+    private String deviceSignature="";
+    private final int BG=0xFF061320, PANEL=0xFF0E2234, CARD=0xFF112A3E, BORDER=0xFF274257;
     private static final class Nearby {
         final BluetoothDevice device;
         long seen;
@@ -68,6 +75,7 @@ public class MainActivity extends Activity {
                     BluetoothDevice d=i.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
                     if (d!=null && d.getAddress()!=null) {
                         nearby.put(d.getAddress(),new Nearby(d,SystemClock.elapsedRealtime()));
+                        deviceSignature="";
                         updateDeviceList();
                     }
                 } catch (SecurityException e) { scanStatus.setText("Нет доступа к Bluetooth"); }
@@ -139,48 +147,157 @@ public class MainActivity extends Activity {
     private void control(LinearLayout box,String title,Runnable action) {
         box.addView(button(title,action));
     }
+    // Interface for television remotes: large cards and a strong, unmistakable focus ring.
+    private GradientDrawable background(int color, int strokeColor, int strokeWidth, int radius) {
+        GradientDrawable d=new GradientDrawable();
+        d.setColor(color);
+        d.setCornerRadius(px(radius));
+        if(strokeWidth>0) d.setStroke(px(strokeWidth),strokeColor);
+        return d;
+    }
+    private void focusStyle(View view, boolean isFocused, int defaultColor, int radius) {
+        view.setBackground(background(isFocused?0xFF19435B:defaultColor,
+            isFocused?0xFF41F3F4:BORDER,isFocused?3:1,radius));
+        view.setScaleX(isFocused?1.015f:1f);
+        view.setScaleY(isFocused?1.015f:1f);
+        view.setElevation(px(isFocused?14:2));
+    }
+    private Button tvAction(String title, String detail, int backgroundColor, Runnable click) {
+        Button b=button(title+(detail.isEmpty()?"":"\n"+detail),click);
+        b.setTextSize(16);
+        b.setTextColor(LIGHT);
+        b.setPadding(px(8),px(10),px(8),px(10));
+        b.setFocusable(true);
+        focusStyle(b,false,backgroundColor,12);
+        b.setOnFocusChangeListener((v,focused)->focusStyle(v,focused,backgroundColor,12));
+        return b;
+    }
+    private LinearLayout panel() {
+        LinearLayout p=new LinearLayout(this);
+        p.setOrientation(LinearLayout.VERTICAL);
+        p.setPadding(px(18),px(14),px(18),px(14));
+        p.setBackground(background(PANEL,BORDER,1,20));
+        return p;
+    }
+    private TextView heading(String s) {
+        TextView t=label(s,23,LIGHT);
+        t.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
+        return t;
+    }
+    private void actionRow(LinearLayout outer, String name1,String caption1,int bg1,Runnable action1,
+        String name2,String caption2,int bg2,Runnable action2) {
+        LinearLayout row=new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout.LayoutParams first=new LinearLayout.LayoutParams(0,px(86),1);
+        first.rightMargin=px(8);
+        row.addView(tvAction(name1,caption1,bg1,action1),first);
+        row.addView(tvAction(name2,caption2,bg2,action2),
+            new LinearLayout.LayoutParams(0,px(86),1));
+        LinearLayout.LayoutParams wrapper=new LinearLayout.LayoutParams(-1,-2);
+        wrapper.topMargin=px(8);
+        outer.addView(row,wrapper);
+    }
     private void makeUi() {
-        ScrollView scroll=new ScrollView(this);
-        scroll.setFillViewport(true);
-        scroll.setBackgroundColor(0xFF111C29);
-        LinearLayout main=new LinearLayout(this);
-        main.setOrientation(LinearLayout.VERTICAL);
-        main.setPadding(px(42),px(24),px(42),px(32));
-        scroll.addView(main);
-        setContentView(scroll);
-        main.addView(label("BT ЗАКРЕПИТЕЛЬ",29,ACCENT));
-        main.addView(label("Красная кнопка 📌 слева закрепляет устройство, обнаруженное сейчас рядом.",18,LIGHT));
-        main.addView(label("DEXP / YaOS • "+Build.MODEL+" • Android "+Build.VERSION.RELEASE,14,MUTED));
-        status=label("",18,LIGHT); main.addView(status);
-        main.addView(label("ДОСТУПНЫЕ УСТРОЙСТВА РЯДОМ",21,ACCENT));
-        scanStatus=label("Подготовка поиска...",16,MUTED); main.addView(scanStatus);
+        getWindow().getDecorView().setSystemUiVisibility(
+            View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+            | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
+        LinearLayout root=new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setBackgroundColor(BG);
+        root.setPadding(px(27),px(18),px(27),px(20));
+        setContentView(root);
+
+        LinearLayout bar=new LinearLayout(this);
+        bar.setOrientation(LinearLayout.HORIZONTAL);
+        bar.setGravity(Gravity.CENTER_VERTICAL);
+        ImageView logo=new ImageView(this);
+        logo.setImageResource(ru.btzakrepitel.tv.R.drawable.bt_generic);
+        logo.setBackground(background(0xFF123F61,0xFF21547A,1,15));
+        logo.setPadding(px(10),px(10),px(10),px(10));
+        bar.addView(logo,new LinearLayout.LayoutParams(px(61),px(61)));
+        LinearLayout titles=new LinearLayout(this);
+        titles.setOrientation(LinearLayout.VERTICAL);
+        titles.setPadding(px(15),0,0,0);
+        TextView title=label("BT Закрепитель",31,LIGHT);
+        title.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
+        titles.addView(title);
+        titles.addView(label("Автоматическое переподключение Bluetooth",16,MUTED));
+        bar.addView(titles,new LinearLayout.LayoutParams(0,-2,1));
+        bluetoothPill=label("ᛒ Bluetooth",17,ACCENT);
+        bluetoothPill.setPadding(px(18),px(10),px(18),px(10));
+        bluetoothPill.setBackground(background(0xFF063B3A,0xFF087A75,1,22));
+        bar.addView(bluetoothPill);
+        root.addView(bar,new LinearLayout.LayoutParams(-1,px(80)));
+
+        LinearLayout two=new LinearLayout(this);
+        two.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout.LayoutParams twoParams=new LinearLayout.LayoutParams(-1,0,1);
+        twoParams.topMargin=px(13);
+        root.addView(two,twoParams);
+
+        LinearLayout left=new LinearLayout(this);
+        left.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout.LayoutParams leftParams=new LinearLayout.LayoutParams(0,-1,1.54f);
+        leftParams.rightMargin=px(16);
+        two.addView(left,leftParams);
+        LinearLayout leftHeader=new LinearLayout(this);
+        leftHeader.setOrientation(LinearLayout.HORIZONTAL);
+        leftHeader.setGravity(Gravity.CENTER_VERTICAL);
+        leftHeader.addView(heading("Доступные устройства"),new LinearLayout.LayoutParams(0,-2,1));
+        countLabel=label("Поиск…",15,MUTED);
+        leftHeader.addView(countLabel);
+        left.addView(leftHeader);
+        scanStatus=label("Поиск Bluetooth-устройств поблизости",15,MUTED);
+        left.addView(scanStatus);
+        ScrollView listScroll=new ScrollView(this);
+        listScroll.setFillViewport(false);
+        listScroll.setClipToPadding(false);
+        listScroll.setPadding(px(4),px(5),px(5),px(5));
         devices=new LinearLayout(this);
         devices.setOrientation(LinearLayout.VERTICAL);
-        main.addView(devices);
-        control(main,"↻ Найти устройства заново",this::startScan);
-        control(main,"Открыть настройки Bluetooth",this::openBluetoothSettings);
-        main.addView(label("УПРАВЛЕНИЕ",21,ACCENT));
-        control(main,"▶ Включить автоматическое переподключение",() -> {
-            if (Prefs.address(this).isEmpty()) { toast("Сначала выберите колонку красной кнопкой"); return; }
-            if (!hasBluetoothConnect()) { validatePermissions(); return; }
-            Prefs.setEnabled(this,true); startMonitor(true); showStatus();
-        });
-        control(main,"↻ Подключить сейчас",() -> {
-            if (Prefs.address(this).isEmpty()) { toast("Устройство не закреплено"); return; }
-            Prefs.setEnabled(this,true); startMonitor(true);
-        });
-        control(main,"■ Остановить наблюдение",() -> {
-            Prefs.setEnabled(this,false);
-            stopService(new Intent(this,MonitorService.class));
-            Prefs.status(this,"Мониторинг выключен"); showStatus();
-        });
-        control(main,"Снять закрепление",() -> {
-            stopService(new Intent(this,MonitorService.class));
-            Prefs.unpin(this); updateDeviceList(); showStatus();
-        });
-        main.addView(label("ДИАГНОСТИКА",21,ACCENT));
-        logs=label("",14,LIGHT); main.addView(logs);
-        main.addView(label("Если сопряжённая колонка не обнаруживается, включите её и повторите поиск. Некоторые модели не отвечают на поиск, пока не переведены в режим обнаружения. Автоподключение может блокироваться прошивкой YaOS.",14,MUTED));
+        listScroll.addView(devices);
+        LinearLayout.LayoutParams listParams=new LinearLayout.LayoutParams(-1,0,1);
+        listParams.topMargin=px(7);
+        left.addView(listScroll,listParams);
+
+        LinearLayout right=new LinearLayout(this);
+        right.setOrientation(LinearLayout.VERTICAL);
+        two.addView(right,new LinearLayout.LayoutParams(0,-1,1.0f));
+        LinearLayout state=panel();
+        state.addView(heading("Состояние"));
+        status=label("",17,LIGHT);
+        status.setLineSpacing(px(5),1.0f);
+        LinearLayout.LayoutParams stateTextParams=new LinearLayout.LayoutParams(-1,-2);
+        stateTextParams.topMargin=px(4);
+        state.addView(status,stateTextParams);
+        right.addView(state);
+
+        LinearLayout actions=panel();
+        actions.addView(heading("Действия"));
+        actionRow(actions,"↻ Обновить поиск","Найти рядом",0xFF104366,this::startScan,
+            "↗ Подключить сейчас","Повторить запрос",0xFF075045,()->{
+                if(Prefs.address(this).isEmpty()){toast("Сначала закрепите устройство");return;}
+                Prefs.setEnabled(this,true); startMonitor(true);showStatus();
+            });
+        actionRow(actions,"⚙ Настройки Bluetooth","Настройки телевизора",0xFF26384A,
+            this::openBluetoothSettings,
+            "📌 Снять закрепление","Открепить устройство",0xFF5A1F2B,()->{
+                stopService(new Intent(this,MonitorService.class));
+                Prefs.unpin(this);deviceSignature="";updateDeviceList();showStatus();
+            });
+        LinearLayout.LayoutParams actionsParams=new LinearLayout.LayoutParams(-1,-2);
+        actionsParams.topMargin=px(13);
+        right.addView(actions,actionsParams);
+
+        LinearLayout diagnostics=panel();
+        diagnostics.addView(heading("Журнал"));
+        logs=label("",14,MUTED);
+        logs.setMaxLines(4);
+        diagnostics.addView(logs);
+        LinearLayout.LayoutParams logParams=new LinearLayout.LayoutParams(-1,0,1);
+        logParams.topMargin=px(13);
+        right.addView(diagnostics,logParams);
+        // No permissions/status panel. Missing critical permissions always open an Android TV dialog.
     }
     private boolean granted(String name) {
         return checkSelfPermission(name)==PackageManager.PERMISSION_GRANTED;
@@ -312,6 +429,7 @@ public class MainActivity extends Activity {
         if (!visible || !missing().isEmpty()) { validatePermissions(); return; }
         cancelScan();
         nearby.clear();
+        deviceSignature="";
         updateDeviceList();
         if (adapter==null) return;
         try {
@@ -334,57 +452,153 @@ public class MainActivity extends Activity {
         try {
             for (BluetoothDevice d:a2dp.getConnectedDevices())
                 nearby.put(d.getAddress(),new Nearby(d,SystemClock.elapsedRealtime()));
+            deviceSignature="";
             updateDeviceList();
         } catch (SecurityException ignored) { }
     }
     private void updateDeviceList() {
-        if (devices==null) return;
-        devices.removeAllViews();
-        if (!missing().isEmpty()) { scanStatus.setText("Поиск доступен после предоставления разрешений"); return; }
-        long now=SystemClock.elapsedRealtime();
-        List<Nearby> matches=new ArrayList<>();
-        for (Nearby n:nearby.values()) {
-            if (now-n.seen<45_000) matches.add(n);
+        if(devices==null)return;
+        if(!missing().isEmpty()){
+            if(deviceSignature.equals("permission")) return;
+            deviceSignature="permission";
+            devices.removeAllViews();
+            countLabel.setText("");
+            scanStatus.setText("Поиск возобновится после разрешения доступа");
+            return;
         }
-        matches.sort(Comparator.comparing(n->{
-            try { String name=n.device.getName(); return name==null?"":name.toLowerCase(); }
-            catch (SecurityException e) { return ""; }
+        long now=SystemClock.elapsedRealtime();
+        List<Nearby> found=new ArrayList<>();
+        for(Nearby n:nearby.values()) if(now-n.seen<45_000) found.add(n);
+        found.sort(Comparator.comparing(n->{
+            try{return n.device.getName()==null?"":n.device.getName().toLowerCase();}
+            catch(SecurityException ex){return "";}
         }));
-        scanStatus.setText(scanning?"Поиск устройств поблизости…":
-            (matches.isEmpty()?"Рядом ничего не обнаружено. Включите колонку и повторите поиск.":
-            "Обнаружено устройств: "+matches.size()));
-        for (Nearby n:matches) {
+        StringBuilder signature=new StringBuilder();
+        for(Nearby n:found) {
+            try {
+                signature.append(n.device.getAddress()).append(n.device.getBondState())
+                    .append(n.device.getAddress().equalsIgnoreCase(Prefs.address(this))).append(';');
+            } catch(SecurityException ignored){}
+        }
+        String sign=signature.toString();
+        if(sign.equals(deviceSignature))return; // preserve remote focus when 3-second status refresh runs
+        String focusedAddress=null;
+        View prevFocus=getCurrentFocus();
+        if(prevFocus!=null && prevFocus.getTag() instanceof String)
+            focusedAddress=(String)prevFocus.getTag();
+        deviceSignature=sign;
+        devices.removeAllViews();
+        countLabel.setText("Найдено: "+found.size());
+        scanStatus.setText(scanning?"Поиск устройств…":
+            (found.isEmpty()?"Включите колонку и повторите поиск.":"Нажмите красную 📌, чтобы закрепить колонку"));
+        if(found.isEmpty()){
+            LinearLayout empty=panel();
+            TextView bluetooth=label("ᛒ",50,ACCENT);
+            bluetooth.setGravity(Gravity.CENTER);
+            empty.addView(bluetooth);
+            TextView emptyTitle=heading("Устройства не найдены");
+            emptyTitle.setGravity(Gravity.CENTER);
+            empty.addView(emptyTitle);
+            TextView explain=label("Включите колонку. Если она не появилась, переведите её в режим обнаружения Bluetooth.",16,MUTED);
+            explain.setGravity(Gravity.CENTER);
+            empty.addView(explain);
+            devices.addView(empty);
+            return;
+        }
+        for(Nearby n:found) {
             BluetoothDevice d=n.device;
             try {
                 String rawName=d.getName();
-                final String name=(rawName==null || rawName.isEmpty())?"Устройство без имени":rawName;
+                final String name=(rawName==null||rawName.trim().isEmpty())?
+                    "Bluetooth-устройство":rawName.trim();
                 String address=d.getAddress();
                 boolean bonded=d.getBondState()==BluetoothDevice.BOND_BONDED;
                 boolean pinned=address.equalsIgnoreCase(Prefs.address(this));
-                LinearLayout row=new LinearLayout(this);
-                row.setGravity(Gravity.CENTER_VERTICAL);
-                row.setOrientation(LinearLayout.HORIZONTAL);
-                row.setPadding(0,px(4),0,px(4));
+                LinearLayout card=new LinearLayout(this);
+                card.setOrientation(LinearLayout.HORIZONTAL);
+                card.setGravity(Gravity.CENTER_VERTICAL);
+                card.setPadding(px(14),px(9),px(12),px(9));
+                focusStyle(card,false,CARD,17);
+                card.setFocusable(true);
+                card.setTag(address);
+                card.setOnClickListener(v->pinDevice(d));
+                final LinearLayout cardRef=card;
+                View.OnFocusChangeListener handleFocus=(v,focus)->{
+                    focusStyle(cardRef,focus,CARD,17);
+                };
+                card.setOnFocusChangeListener(handleFocus);
                 Button pin=button("📌",()->pinDevice(d));
-                pin.setContentDescription("Закрепить устройство "+name);
-                GradientDrawable bg=new GradientDrawable();
-                bg.setColor(RED);
-                bg.setCornerRadius(px(12));
-                pin.setBackground(bg);
+                pin.setContentDescription("Закрепить "+name);
+                pin.setTextSize(28);
                 pin.setTextColor(Color.WHITE);
-                pin.setTextSize(24);
+                pin.setPadding(0,0,0,0);
+                pin.setBackground(background(0xFFF12C43,0xFFFF6C74,1,14));
+                pin.setTag(address);
+                pin.setOnFocusChangeListener((v,focus)->{
+                    focusStyle(cardRef,focus,CARD,17);
+                    pin.setBackground(background(focus?0xFFFF4757:0xFFF12C43,
+                        focus?Color.WHITE:0xFFFF6C74,focus?3:1,14));
+                    pin.setScaleX(focus?1.1f:1f);
+                    pin.setScaleY(focus?1.1f:1f);
+                });
                 pin.setEnabled(bonded);
-                if (!bonded) pin.setAlpha(0.4f);
-                LinearLayout.LayoutParams iconParams=new LinearLayout.LayoutParams(px(72),px(58));
-                row.addView(pin,iconParams);
-                TextView title=label("   "+name+(pinned?"  ✓ закреплено":"")+
-                    (!bonded?"  (не сопряжено)":""),
-                    18,pinned?ACCENT:LIGHT);
-                title.setSingleLine(false);
-                row.addView(title,new LinearLayout.LayoutParams(0,LinearLayout.LayoutParams.WRAP_CONTENT,1));
-                devices.addView(row);
-            } catch (SecurityException ignored) { }
+                if(!bonded)pin.setAlpha(0.55f);
+                card.addView(pin,new LinearLayout.LayoutParams(px(64),px(65)));
+
+                String normalized=name.toLowerCase(java.util.Locale.ROOT).replace('ё','е');
+                boolean jbl=normalized.equals("jbl flip 6");
+                // Actual Bluetooth name from user's Samsung screenshot: "Станция Мини 3 Про".
+                boolean mini=normalized.equals("станция мини 3 про")
+                    || normalized.equals("яндекс станция мини 3 про")
+                    || normalized.equals("mini 3 pro");
+                if(jbl||mini) {
+                    ImageView product=new ImageView(this);
+                    product.setScaleType(ImageView.ScaleType.FIT_CENTER);
+                    product.setImageResource(jbl?R.drawable.product_jbl_flip6_blue:R.drawable.product_yandex_mini3pro);
+                    LinearLayout.LayoutParams img=new LinearLayout.LayoutParams(
+                        jbl?px(138):px(105),px(77));
+                    img.leftMargin=px(9);
+                    img.rightMargin=px(10);
+                    card.addView(product,img);
+                } else {
+                    ImageView generic=new ImageView(this);
+                    generic.setImageResource(R.drawable.bt_generic);
+                    generic.setPadding(px(12),px(12),px(12),px(12));
+                    generic.setBackground(background(0xFF1A3D56,0xFF28485A,1,16));
+                    LinearLayout.LayoutParams img=new LinearLayout.LayoutParams(px(70),px(70));
+                    img.leftMargin=px(18);
+                    img.rightMargin=px(16);
+                    card.addView(generic,img);
+                }
+                LinearLayout textColumn=new LinearLayout(this);
+                textColumn.setOrientation(LinearLayout.VERTICAL);
+                TextView deviceName=label(name,20,LIGHT);
+                deviceName.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
+                textColumn.addView(deviceName);
+                boolean connected=isConnectedA2dp(address);
+                String line=(connected?"● Подключено":(bonded?"● Сопряжено · рядом":"● Не сопряжено"));
+                TextView deviceStatus=label(line,15,
+                    connected?0xFF39D5FF:(bonded?0xFF32E7B5:MUTED));
+                textColumn.addView(deviceStatus);
+                if(pinned)textColumn.addView(label("📌 Закреплено",13,ACCENT));
+                LinearLayout.LayoutParams textParams=new LinearLayout.LayoutParams(0,-2,1);
+                card.addView(textColumn,textParams);
+                TextView arrow=label("›",35,0xFF8DAFC9);
+                card.addView(arrow);
+                LinearLayout.LayoutParams cardParams=new LinearLayout.LayoutParams(-1,px(102));
+                cardParams.bottomMargin=px(12);
+                devices.addView(card,cardParams);
+                if(address.equals(focusedAddress)) card.requestFocus();
+            } catch(SecurityException ignored) {}
         }
+    }
+    private boolean isConnectedA2dp(String addr) {
+        if(a2dp==null||!hasBluetoothConnect())return false;
+        try {
+            for(BluetoothDevice device:a2dp.getConnectedDevices())
+                if(addr.equalsIgnoreCase(device.getAddress()))return true;
+        } catch(SecurityException ignored){}
+        return false;
     }
     private void pinDevice(BluetoothDevice d) {
         try {
@@ -401,6 +615,7 @@ public class MainActivity extends Activity {
             Prefs.addLog(this,"Закреплено: "+name);
             startMonitor(true);
             showStatus();
+            deviceSignature="";
             updateDeviceList();
             toast("Закреплено: "+name);
         } catch (SecurityException e) { validatePermissions(); }
@@ -413,11 +628,23 @@ public class MainActivity extends Activity {
         } catch (RuntimeException e) { Prefs.addLog(this,"Ошибка службы: "+e.getClass().getSimpleName()); }
     }
     private void showStatus() {
-        if (status==null) return;
-        status.setText("📌 "+(Prefs.address(this).isEmpty()?"Устройство не закреплено":Prefs.name(this))
-          +"\nМониторинг: "+(Prefs.enabled(this)?"включён":"выключен")
-          +"\n"+Prefs.status(this));
-        logs.setText(Prefs.log(this).isEmpty()?"Событий нет":Prefs.log(this));
+        if(status==null)return;
+        status.setText(
+          "Закреплено:    "+(Prefs.address(this).isEmpty()?"—":Prefs.name(this))
+          +"\nМониторинг:   "+(Prefs.enabled(this)?"● включён":"○ выключен")
+          +"\nСтатус:          "+Prefs.status(this));
+        String[] lines=Prefs.log(this).split("\n");
+        StringBuilder summary=new StringBuilder();
+        for(int i=0;i<Math.min(4,lines.length);i++) {
+            if(!lines[i].trim().isEmpty())summary.append("• ").append(lines[i]).append("\n");
+        }
+        logs.setText(summary.length()==0?"Событий пока нет":summary.toString());
+        if(bluetoothPill!=null) {
+            boolean on=false;
+            try{on=adapter!=null&&adapter.isEnabled();}catch(SecurityException ignored){}
+            bluetoothPill.setText(on?"ᛒ  Bluetooth: ВКЛ":"ᛒ  Bluetooth: ВЫКЛ");
+            bluetoothPill.setTextColor(on?ACCENT:0xFFFF8A98);
+        }
     }
     private void openBluetoothSettings() {
         try { startActivity(new Intent(Settings.ACTION_BLUETOOTH_SETTINGS)); }
