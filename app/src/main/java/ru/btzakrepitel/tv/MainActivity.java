@@ -264,12 +264,7 @@ public class MainActivity extends Activity {
         try {
             switch (kind) {
                 case "ACCESS_FINE_LOCATION":
-                    if (shouldShowRequestPermissionRationale(Manifest.permission.ACCESS_FINE_LOCATION)) {
-                        requestSystemPermission(Manifest.permission.ACCESS_FINE_LOCATION);
-                    } else {
-                        // При первом запросе тоже вызываем штатный Android-диалог.
-                        requestSystemPermission(Manifest.permission.ACCESS_FINE_LOCATION);
-                    }
+                    requestSystemPermission(Manifest.permission.ACCESS_FINE_LOCATION);
                     return;
                 case "BLUETOOTH_CONNECT":
                 case "BLUETOOTH_SCAN":
@@ -289,8 +284,22 @@ public class MainActivity extends Activity {
         }
     }
     private void requestSystemPermission(String permission) {
+        String key="asked_"+permission;
+        boolean asked=getPreferences(MODE_PRIVATE).getBoolean(key,false);
+        // После постоянного отказа штатный запрос больше не показывается.
+        if (asked && !shouldShowRequestPermissionRationale(permission)) {
+            openAppPermissions();
+            return;
+        }
+        getPreferences(MODE_PRIVATE).edit().putBoolean(key,true).apply();
         permissionRequestActive=true;
         requestPermissions(new String[]{permission},100);
+    }
+    private void openAppPermissions() {
+        try {
+            startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                Uri.parse("package:"+getPackageName())));
+        } catch (RuntimeException e) { toast("Раздел разрешений недоступен"); }
     }
     @Override public void onRequestPermissionsResult(int requestCode,String[] names,int[] result) {
         super.onRequestPermissionsResult(requestCode,names,result);
