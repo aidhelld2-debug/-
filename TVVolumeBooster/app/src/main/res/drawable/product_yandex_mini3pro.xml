@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="130dp" android:height="103dp" android:viewportWidth="150" android:viewportHeight="130">
+    <!-- Stylised Station Mini 3 Pro with lilac LED ring and clock. -->
+    <path android:fillColor="#051421" android:pathData="M10,112 Q75,131 142,111 Q128,129 75,129 Q21,127 10,112 Z"/>
+    <path android:fillColor="#6B7889" android:pathData="M15,34 L136,34 L136,94 Q132,115 76,120 Q16,118 12,96 Z"/>
+    <path android:fillColor="#CDD3DC" android:pathData="M18,42 L132,42 L131,94 Q127,112 75,115 Q23,112 19,93 Z"/>
+    <path android:fillColor="#929DAC" android:pathData="M18,93 Q73,104 132,92 L131,98 Q123,115 74,115 Q26,113 19,98 Z"/>
+    <path android:strokeColor="#A9B2BE" android:strokeWidth="0.75" android:pathData="M22,49 L129,53 M22,55 L129,59 M22,61 L129,65 M22,67 L129,71 M22,73 L129,77 M22,79 L129,83 M23,85 L128,89 M23,91 L127,95 M26,97 L123,99"/>
+    <path android:fillColor="#A2AED0" android:pathData="M11,30 Q15,13 75,12 Q135,12 139,30 L139,35 Q75,53 11,36 Z"/>
+    <path android:fillColor="#9E5EED" android:pathData="M13,31 Q75,49 136,32 L136,39 Q75,58 13,40 Z"/>
+    <path android:fillColor="#E6B8FF" android:pathData="M18,35 Q76,48 131,35 L131,38 Q76,51 18,38 Z"/>
+    <path android:fillColor="#202633" android:pathData="M11,29 C11,14 38,8 76,8 C115,8 140,17 139,29 C138,42 10,43 11,29 Z"/>
+    <path android:strokeColor="#C573FF" android:strokeWidth="3.2" android:pathData="M66,26 Q76,16 85,26 Q78,34 66,26 Z"/>
+    <path android:strokeColor="#A9B6C4" android:strokeWidth="1.4" android:pathData="M41,24 L51,24 M101,24 L111,24 M106,19 L106,29"/>
+    <!-- Seven-segment inspired LED time. -->
+    <path android:strokeColor="#FFFFFF" android:strokeWidth="4.1" android:strokeLineCap="round" android:pathData="M47,60 L57,60 L57,71 L47,71 L47,81 L57,81 M64,60 L74,60 L74,81 L64,81 M81,64 L81,66 M81,76 L81,78 M88,60 L99,60 L99,71 L88,71 M99,71 L99,81 L88,81"/>
+    <path android:fillColor="#FFFFFF" android:fillAlpha="0.3" android:pathData="M34,58 L117,58 L117,87 L34,87 Z"/>
+</vector>
