@@ -210,8 +210,8 @@ public final class MainActivity extends Activity {
         scroll.addView(inner);
 
         inner.addView(label("УСИЛИТЕЛЬ ГРОМКОСТИ", 30, PALE, true));
-        margin(inner, label("Выбери мощность. Усиление продолжит работать после перехода в другие приложения.",
-                18, SUB, false), 8);
+        margin(inner, label("Более сильное усиление без дополнительной динамической компрессии. "
+                + "Настройка сохранится при переходе в другие приложения.", 18, SUB, false), 8);
         volumeStatus = label("", 21, ACCENT, true);
         margin(inner, volumeStatus, 17);
         volumeDetail = label("", 16, SUB, false);
@@ -220,10 +220,10 @@ public final class MainActivity extends Activity {
         margin(inner, row1, 15);
         LinearLayout row2 = row();
         margin(inner, row2, 9);
-        Button first = preset(row1, "×1,5", "+50%  •  МЯГКО", 1, true);
-        preset(row1, "×2", "+100%  •  СРЕДНЕ", 2, false);
-        preset(row2, "×3", "+200%  •  СИЛЬНО", 3, true);
-        preset(row2, "×4", "+300%  •  МАКСИМУМ", 4, false);
+        Button first = preset(row1, "×1,5", "+6 дБ  •  МЯГКО", 1, true);
+        preset(row1, "×2", "+10 дБ  •  СРЕДНЕ", 2, false);
+        preset(row2, "×3", "+16 дБ  •  СИЛЬНО", 3, true);
+        preset(row2, "×4", "+20 дБ  •  МАКСИМУМ", 4, false);
 
         Button stop = button("■   ВЫКЛЮЧИТЬ УСИЛЕНИЕ", 0xFF823747);
         LinearLayout.LayoutParams offParams = new LinearLayout.LayoutParams(-1, dp(62));
@@ -235,9 +235,10 @@ public final class MainActivity extends Activity {
             startService(intent);
             handler.postDelayed(this::updateVolumeStatus, 280);
         });
-        margin(inner, label("Громкое звучание может сопровождаться искажениями. "
-                + "Если появились хрипы, уменьшите усиление. На этой прошивке системный эффект уже проверен.",
-                14, SUB, false), 15);
+        margin(inner, label("×1,5–×4 — ориентиры громкости на слух, а не гарантированное "
+                + "увеличение в эти разы. Реально задаются +6/+10/+16/+20 дБ. "
+                + "Android может ограничивать пики. При хрипах уменьшите усиление, "
+                + "особенно в режимах ×3 и ×4.", 14, SUB, false), 15);
         updateVolumeStatus();
         first.requestFocus();
     }
@@ -265,7 +266,10 @@ public final class MainActivity extends Activity {
         int gain = p.getInt("level", 0);
         volumeStatus.setText(enabled ? "●   УСИЛЕНИЕ РАБОТАЕТ  ·  ×"
                 + (gain == 1 ? "1,5" : String.valueOf(gain)) : "○   УСИЛЕНИЕ ВЫКЛЮЧЕНО");
-        volumeDetail.setText(p.getString("status", "Выберите подходящий режим усиления."));
+        volumeDetail.setText(p.getString("status", "Выберите подходящий режим усиления.")
+                + (enabled && gain >= 1 && gain <= 4
+                ? "  Цель: +" + BoostService.GAINS_DB[gain] + " дБ, не измеренный результат."
+                : ""));
     }
     private void openBluetooth() {
         btPage = true;
