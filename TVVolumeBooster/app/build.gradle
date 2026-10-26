@@ -1,0 +1,18 @@
+plugins {
+    id 'com.android.application'
+}
+android {
+    namespace 'ru.frolov.tvvolumebooster'
+    compileSdk 35
+    defaultConfig {
+        applicationId 'ru.frolov.tvvolumebooster'
+        minSdk 26
+        targetSdk 32
+        versionCode 1
+        versionName '0.1-test'
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
