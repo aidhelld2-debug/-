@@ -135,7 +135,8 @@ public final class BluetoothMonitorService extends Service {
         if (adapter == null) { report("Bluetooth-адаптер не обнаружен"); return; }
         try {
             if (!adapter.isEnabled()) { report("Bluetooth выключен на телевизоре"); return; }
-            if (adapter.isDiscovering()) { report("Ожидание завершения поиска"); return; }
+            // Do not call isDiscovering(): it needs BLUETOOTH_SCAN on Android 12+,
+            // but background reconnection only requires the CONNECT permission.
             if (a2dp == null) { ensureProxy(); report("Ожидание профиля A2DP"); return; }
             BluetoothDevice selected = null;
             for (BluetoothDevice device : adapter.getBondedDevices()) {
