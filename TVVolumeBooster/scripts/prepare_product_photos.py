@@ -52,8 +52,13 @@ def make_asset(source, target):
     rgb = im.load()
     bg = bytearray(w * h)
     queue = deque()
+    # JBL retailer uses a chroma-green studio background, the Station uses white.
+    # Only flood from the outside, so the real product body is preserved.
+    base = rgb[0, 0] if "jbl" in target.name else (255, 255, 255)
     def looks_white(x, y):
         r, g, b = rgb[x, y]
+        if "jbl" in target.name:
+            return sum(abs(v-bv) for v,bv in zip((r,g,b), base)) < 65
         return min(r, g, b) > 235 and max(r, g, b) - min(r, g, b) < 19
     for y in range(h):
         for x in (0, w-1):
@@ -97,3 +102,19 @@ def make_asset(source, target):
 
 for key, url in SOURCES.items():
     make_asset(get_photo(url), BASE/(key + ".webp"))
+
+# Android TV launchers prefer a wide banner instead of a square icon.
+# Build the banner from the exact user-approved image already embedded in Git.
+from PIL import ImageDraw, ImageFont
+icon = BASE / "approved_launcher.webp"
+if icon.exists():
+    canvas = Image.new("RGB", (640, 360), (4, 18, 37))
+    source = Image.open(icon).convert("RGBA").resize((280,280), Image.Resampling.LANCZOS)
+    canvas.paste(source, (33,40), source)
+    draw = ImageDraw.Draw(canvas)
+    font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+    font = ImageFont.truetype(font_path, 51)
+    draw.text((323,111), "АУДИО", font=font, fill=(225,248,255))
+    draw.text((323,180), "ТВ", font=font, fill=(66,226,243))
+    canvas.save(BASE/"tv_banner_image.webp", "WEBP", quality=88)
+    print("Wrote official TV app banner")
