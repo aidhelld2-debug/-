@@ -463,8 +463,8 @@ public final class MainActivity extends Activity {
                 || n.equals("mini 3 pro");
         ImageView picture = new ImageView(this);
         picture.setScaleType(ImageView.ScaleType.FIT_CENTER);
-        picture.setImageResource(jbl ? R.drawable.product_jbl_flip6_blue :
-                yandex ? R.drawable.product_yandex_mini3pro : R.drawable.bt_generic);
+        picture.setImageResource(jbl ? R.drawable.photo_jbl_flip6 :
+                yandex ? R.drawable.photo_yandex_mini3pro : R.drawable.bt_generic);
         LinearLayout.LayoutParams ip = new LinearLayout.LayoutParams(dp(91), dp(80));
         ip.rightMargin = dp(12);
         card.addView(picture, ip);
