@@ -63,7 +63,15 @@ public final class BluetoothMonitorService extends Service {
         @Override public void onReceive(Context c, Intent intent) {
             String action = intent.getAction();
             if (BluetoothAdapter.ACTION_STATE_CHANGED.equals(action)) {
-                handler.postDelayed(() -> { ensureProxy(); checkConnection(); }, 2000);
+                proxyRequested = false;
+                handler.postDelayed(() -> { ensureProxy(); checkConnection(); }, 1200);
+            } else if (Intent.ACTION_SCREEN_ON.equals(action)
+                    || Intent.ACTION_USER_PRESENT.equals(action)) {
+                // TV might have been in standby; check the pinned speaker on wake.
+                lastAttempt = 0;
+                handler.postDelayed(() -> { ensureProxy(); checkConnection(); }, 900);
+            } else if (BluetoothDevice.ACTION_ACL_DISCONNECTED.equals(action)) {
+                handler.postDelayed(() -> checkConnection(), 1600);
             } else if (BluetoothA2dp.ACTION_CONNECTION_STATE_CHANGED.equals(action)) {
                 try {
                     BluetoothDevice d = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
@@ -97,10 +105,14 @@ public final class BluetoothMonitorService extends Service {
         IntentFilter f = new IntentFilter();
         f.addAction(BluetoothAdapter.ACTION_STATE_CHANGED);
         f.addAction(BluetoothA2dp.ACTION_CONNECTION_STATE_CHANGED);
+        f.addAction(BluetoothDevice.ACTION_ACL_DISCONNECTED);
+        f.addAction(Intent.ACTION_SCREEN_ON);
+        f.addAction(Intent.ACTION_USER_PRESENT);
         registerReceiver(receiver, f);
         receiverRegistered = true;
         running = true;
         ensureProxy();
+        if (StartupManager.shouldMonitor(this)) StartupManager.scheduleWatchdog(this);
         handler.post(ticker);
     }
     @Override public int onStartCommand(Intent i, int flags, int id) {
@@ -115,6 +127,7 @@ public final class BluetoothMonitorService extends Service {
             lastAttempt = 0;
             handler.post(() -> checkConnection());
         }
+        StartupManager.scheduleWatchdog(this);
         return START_STICKY;
     }
     private boolean permission() {
@@ -194,6 +207,11 @@ public final class BluetoothMonitorService extends Service {
             lastReport = s;
             BluetoothPrefs.addLog(this, s);
         }
+    }
+    @Override public void onTaskRemoved(Intent rootIntent) {
+        // Keep working without the Activity. Schedule a fallback if YaOS kills our process.
+        if (StartupManager.shouldMonitor(this)) StartupManager.scheduleWatchdog(this);
+        super.onTaskRemoved(rootIntent);
     }
     @Override public void onDestroy() {
         running = false;
