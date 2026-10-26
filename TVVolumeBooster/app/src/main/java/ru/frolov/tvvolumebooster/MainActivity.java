@@ -20,6 +20,8 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.net.Uri;
+import android.os.PowerManager;
 import android.provider.Settings;
 import android.view.Gravity;
 import android.view.View;
@@ -181,7 +183,9 @@ public final class MainActivity extends Activity {
         header.addView(brand, new LinearLayout.LayoutParams(0, -2, 1f));
 
         tabVolume = button("▰  УСИЛЕНИЕ ЗВУКА", CARD);
-        tabBluetooth = button("ᛒ  BLUETOOTH", CARD);
+        tabBluetooth = button("BLUETOOTH", CARD);
+        tabBluetooth.setCompoundDrawablesWithIntrinsicBounds(R.drawable.bluetooth_mark, 0, 0, 0);
+        tabBluetooth.setCompoundDrawablePadding(dp(6));
         LinearLayout.LayoutParams tabParams1 = new LinearLayout.LayoutParams(dp(218), dp(54));
         tabParams1.rightMargin = dp(10);
         header.addView(tabVolume, tabParams1);
@@ -327,6 +331,7 @@ public final class MainActivity extends Activity {
         right.addView(unpin, up);
         unpin.setOnClickListener(v -> {
             BluetoothPrefs.unpin(this);
+            StartupManager.cancelWatchdog(this);
             Intent i = new Intent(this, BluetoothMonitorService.class);
             i.setAction(BluetoothMonitorService.ACTION_STOP);
             startService(i);
@@ -338,7 +343,27 @@ public final class MainActivity extends Activity {
         sp.topMargin = dp(8);
         right.addView(settings, sp);
         settings.setOnClickListener(v -> bluetoothSettings());
-        margin(right, label("ПОСЛЕДНИЕ СОБЫТИЯ", 15, SUB, true), 16);
+
+        Button startOnBoot = button("", 0xFF254459);
+        LinearLayout.LayoutParams startupP = new LinearLayout.LayoutParams(-1, dp(47));
+        startupP.topMargin = dp(8);
+        right.addView(startOnBoot, startupP);
+        updateBootButton(startOnBoot);
+        startOnBoot.setTextSize(14);
+        startOnBoot.setOnClickListener(v -> {
+            boolean enabled = getSharedPreferences("tv_settings", MODE_PRIVATE)
+                    .getBoolean("show_on_boot", true);
+            getSharedPreferences("tv_settings", MODE_PRIVATE).edit()
+                    .putBoolean("show_on_boot", !enabled).apply();
+            updateBootButton(startOnBoot);
+        });
+        Button battery = button("✓  РАЗРЕШИТЬ РАБОТУ В ФОНЕ", 0xFF254459);
+        battery.setTextSize(14);
+        LinearLayout.LayoutParams batteryP = new LinearLayout.LayoutParams(-1, dp(47));
+        batteryP.topMargin = dp(7);
+        right.addView(battery, batteryP);
+        battery.setOnClickListener(v -> requestNoBatteryRestrictions());
+        margin(right, label("ПОСЛЕДНИЕ СОБЫТИЯ", 15, SUB, true), 12);
         btLog = label("", 13, SUB, false);
         ScrollView logScroll = new ScrollView(this);
         logScroll.addView(btLog);
@@ -469,6 +494,7 @@ public final class MainActivity extends Activity {
             }
             cancelScan();
             BluetoothPrefs.pin(this, device.getAddress(), deviceName(device));
+            StartupManager.scheduleWatchdog(this);
             startMonitor(true);
             renderDevices();
             updateBtStatus();
@@ -557,6 +583,33 @@ public final class MainActivity extends Activity {
             toast("Разрешение не предоставлено. Его можно включить в настройках приложения.");
         }
     }
+    private void updateBootButton(Button b) {
+        boolean enabled = getSharedPreferences("tv_settings", MODE_PRIVATE)
+                .getBoolean("show_on_boot", true);
+        b.setText(enabled ? "✓  ОТКРЫВАТЬ ОКНО ПРИ СТАРТЕ ТВ: ДА"
+                : "○  ОТКРЫВАТЬ ОКНО ПРИ СТАРТЕ ТВ: НЕТ");
+    }
+
+    private void requestNoBatteryRestrictions() {
+        // Must be requested by user. Some Yandex TV firmwares omit this settings screen.
+        try {
+            if (Build.VERSION.SDK_INT >= 23) {
+                PowerManager pm = (PowerManager)getSystemService(POWER_SERVICE);
+                if (pm != null && pm.isIgnoringBatteryOptimizations(getPackageName())) {
+                    toast("Работа без ограничений энергосбережения уже разрешена");
+                    return;
+                }
+                startActivity(new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+                        Uri.parse("package:" + getPackageName())));
+            }
+        } catch (RuntimeException e) {
+            try { startActivity(new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)); }
+            catch (RuntimeException fail) {
+                toast("YaOS не предоставляет настройки энергосбережения для этого приложения");
+            }
+        }
+    }
+
     private void bluetoothSettings() {
         try { startActivity(new Intent(Settings.ACTION_BLUETOOTH_SETTINGS)); }
         catch (RuntimeException e) {
