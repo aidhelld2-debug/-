@@ -8,25 +8,25 @@ import android.util.Log;
 
 public final class BootReceiver extends BroadcastReceiver {
     @Override public void onReceive(Context context, Intent intent) {
-        String action = intent.getAction();
+        if (intent == null) return;
+        final String action = intent.getAction();
         if (!Intent.ACTION_BOOT_COMPLETED.equals(action)
                 && !Intent.ACTION_MY_PACKAGE_REPLACED.equals(action)) return;
 
-        if (context.getSharedPreferences("boost", Context.MODE_PRIVATE).getBoolean("running", false)) {
-            Intent boost = new Intent(context, BoostService.class);
-            boost.setAction(BoostService.ACTION_RESTORE);
-            startSafe(context, boost);
-        }
-        if (BluetoothPrefs.enabled(context) && !BluetoothPrefs.address(context).isEmpty()) {
-            startSafe(context, new Intent(context, BluetoothMonitorService.class));
-        }
-    }
-    private void startSafe(Context context, Intent service) {
-        try {
-            if (Build.VERSION.SDK_INT >= 26) context.startForegroundService(service);
-            else context.startService(service);
-        } catch (RuntimeException e) {
-            Log.w("TVAudioCenter", "YaOS blocked automatic service start", e);
+        StartupManager.startServices(context);
+        boolean boot = Intent.ACTION_BOOT_COMPLETED.equals(action);
+        boolean autoOpen = context.getSharedPreferences("tv_settings", Context.MODE_PRIVATE)
+                .getBoolean("show_on_boot", true);
+        // Best effort only. Android 10+ often blocks background UI starts.
+        // Background services are started first and keep working without this window.
+        if (boot && autoOpen) {
+            try {
+                Intent activity = new Intent(context, MainActivity.class);
+                activity.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                context.startActivity(activity);
+            } catch (RuntimeException e) {
+                Log.i("TVAudio", "Android TV blocked boot-time foreground UI", e);
+            }
         }
     }
 }
