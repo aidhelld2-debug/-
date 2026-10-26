@@ -147,6 +147,10 @@ public final class MainActivity extends Activity {
     @Override protected void onResume() {
         super.onResume();
         visible = true;
+        // Keep the chosen device connected even after the app was suspended.
+        if (BluetoothPrefs.enabled(this) && !BluetoothPrefs.address(this).isEmpty()) {
+            startMonitor(false);
+        }
         handler.removeCallbacks(statusTick);
         handler.post(statusTick);
         if (btPage) {
