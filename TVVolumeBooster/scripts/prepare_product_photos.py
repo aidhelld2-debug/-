@@ -15,6 +15,7 @@ from pathlib import Path
 from PIL import Image
 from urllib.request import Request, urlopen
 import time
+import ssl
 
 BASE = Path(__file__).resolve().parents[1] / "app/src/main/res/drawable-nodpi"
 BASE.mkdir(parents=True, exist_ok=True)
@@ -27,7 +28,9 @@ def get_photo(url):
     for attempt in range(3):
         try:
             req = Request(url, headers={"User-Agent": "Mozilla/5.0 (compatible; TVAudio/1.1)", "Accept": "image/avif,image/webp,image/*,*/*"})
-            with urlopen(req, timeout=25) as resp:
+            # This image-host uses an expired HTTPS certificate. This fetch is only for
+            # a non-executable image, whose format is checked by Pillow.
+            with urlopen(req, timeout=25, context=ssl._create_unverified_context()) as resp:
                 data = resp.read(6_000_000)
             im = Image.open(BytesIO(data))
             im.load()
