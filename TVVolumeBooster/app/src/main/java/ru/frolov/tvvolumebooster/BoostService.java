@@ -21,8 +21,11 @@ public final class BoostService extends Service {
 
     private static final String CHANNEL = "tv_volume_booster";
     private static final int NOTIFICATION_ID = 1001;
-    // 20*log10(amplitude), in millibels (100mB = 1dB).
-    private static final int[] GAINS_MB = { 0, 352, 602, 954, 1204 };
+    // Target gains in millibels (100 mB = 1 dB). No additional dynamic
+    // compressor or equalizer is used. Android applies its own peak limiter.
+    // These are requested gains, not physically measured loudness multipliers.
+    private static final int[] GAINS_MB = { 0, 600, 1000, 1600, 2000 };
+    public static final int[] GAINS_DB = { 0, 6, 10, 16, 20 };
     private LoudnessEnhancer effect;
     private SharedPreferences preferences;
 
@@ -64,7 +67,9 @@ public final class BoostService extends Service {
                 throw new IllegalStateException("Аудиоэффект отклонён прошивкой (" + code + ")");
             }
             preferences.edit().putBoolean("running", true).putInt("level", level)
-                    .putString("status", "Эффект активирован. Проверьте звук в фильме: Яндекс ТВ может обходить обработку.")
+                    .putString("status", "Задано +" + GAINS_DB[level]
+                            + " дБ. Реальный прирост зависит от исходной записи, "
+                            + "ограничителя Android и динамиков телевизора.")
                     .apply();
             NotificationManager manager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
             manager.notify(NOTIFICATION_ID, makeNotification(level));
@@ -89,7 +94,7 @@ public final class BoostService extends Service {
                 ? new Notification.Builder(this, CHANNEL)
                 : new Notification.Builder(this);
         return builder.setContentTitle("Усилитель громкости ТВ")
-                .setContentText("Усиление ×" + (level == 1 ? "1,5" : Integer.toString(level)))
+                .setContentText("Заданное усиление: +" + GAINS_DB[level] + " дБ")
                 .setSmallIcon(android.R.drawable.ic_lock_silent_mode_off)
                 .setContentIntent(pending)
                 .setOngoing(true)
