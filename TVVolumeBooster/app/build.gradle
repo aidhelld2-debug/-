@@ -5,11 +5,13 @@ android {
     namespace 'ru.frolov.tvvolumebooster'
     compileSdk 35
     defaultConfig {
-        applicationId 'ru.frolov.tvvolumebooster'
+        // Different package from the prototype: installs alongside the already-working
+        // booster without forcing removal due to GitHub Actions debug-signing key changes.
+        applicationId 'ru.frolov.tvaudiocenter'
         minSdk 26
         targetSdk 32
         versionCode 1
-        versionName '0.1-test'
+        versionName '1.0-test'
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
