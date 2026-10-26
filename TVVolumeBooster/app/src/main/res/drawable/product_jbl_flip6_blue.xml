@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="160dp" android:height="94dp" android:viewportWidth="260" android:viewportHeight="150">
+    <!-- Blue JBL Flip 6: illustrated locally, no network required. -->
+    <path android:fillColor="#0A1828" android:pathData="M24,118 C50,128 220,129 243,113 C224,138 51,139 24,118 Z"/>
+    <path android:fillColor="#0C293E" android:pathData="M40,30 Q44,21 63,20 L219,26 Q240,28 240,50 L236,103 Q234,115 217,118 L57,113 Q35,110 32,90 L30,49 Q31,35 40,30 Z"/>
+    <path android:fillColor="#12587D" android:pathData="M52,27 Q72,20 211,29 L225,39 L224,104 Q177,117 56,105 Q39,98 40,76 L42,43 Z"/>
+    <path android:fillColor="#147EB0" android:pathData="M50,36 Q114,26 213,38 L217,48 Q137,41 44,51 Z"/>
+    <path android:fillColor="#0B476D" android:pathData="M44,90 Q128,106 218,90 L220,103 Q128,117 53,104 Z"/>
+    <path android:strokeColor="#2E9BC7" android:strokeWidth="1.2" android:pathData="M55,44 L214,48 M53,50 L215,55 M51,57 L217,63 M50,65 L217,71 M50,73 L217,79 M52,81 L214,86 M55,89 L211,93"/>
+    <path android:strokeColor="#0A395B" android:strokeWidth="1.1" android:pathData="M68,36 L63,103 M77,36 L73,106 M88,38 L85,108 M99,39 L96,109 M110,39 L108,110 M122,40 L119,110 M135,40 L131,110 M148,41 L144,110 M161,41 L157,109 M174,42 L171,107 M187,43 L184,105 M201,44 L197,104"/>
+    <path android:fillColor="#072D4A" android:pathData="M31,45 C34,27 48,27 55,36 L59,96 C52,120 34,114 28,93 Z"/>
+    <path android:fillColor="#1C4561" android:pathData="M29,48 C33,29 45,29 50,46 L51,92 C43,105 30,100 27,91 Z"/>
+    <path android:fillColor="#052035" android:pathData="M34,51 Q40,41 45,54 L45,86 Q40,94 34,87 Z"/>
+    <path android:strokeColor="#459EC8" android:strokeWidth="1.5" android:pathData="M39,53 L39,85"/>
+    <!-- Subtle white JBL lettering drawn with paths. -->
+    <path android:strokeColor="#E3F5FF" android:strokeWidth="7" android:strokeLineCap="square" android:pathData="M115,58 L115,82 Q114,92 102,85 M128,89 L128,55 L145,55 Q156,57 147,69 Q161,79 146,88 Z M167,55 L167,88 L184,88"/>
+    <path android:fillColor="#D9F8FF" android:pathData="M104,53 m-3,0 a3,3 0,1 0,6 0 a3,3 0,1 0,-6 0"/>
+    <path android:fillColor="#071728" android:pathData="M232,39 Q250,46 249,70 L247,97 Q244,115 231,116 L221,110 L225,43 Z"/>
+    <path android:strokeColor="#4B91AC" android:strokeWidth="3" android:pathData="M235,49 Q244,58 241,94"/>
+</vector>
