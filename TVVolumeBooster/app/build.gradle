@@ -7,11 +7,11 @@ android {
     defaultConfig {
         // Different package from the prototype: installs alongside the already-working
         // booster without forcing removal due to GitHub Actions debug-signing key changes.
-        applicationId 'ru.frolov.tvaudiocenter.alwayson'
+        applicationId 'ru.frolov.tvaudiocenter.louder12'
         minSdk 26
         targetSdk 32
-        versionCode 2
-        versionName '1.1-test'
+        versionCode 3
+        versionName '1.2-test'
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
