@@ -75,8 +75,8 @@ final class ConnectionPopup {
         if (wm == null || !isAllowed(c)) return;
 
         float density = c.getResources().getDisplayMetrics().density;
-        int imageW = Math.round(184 * density);
-        int imageH = Math.round(106 * density);
+        int imageW = Math.round(190 * density);
+        int imageH = Math.round(185 * density);
         int pad = Math.round(8 * density);
 
         LinearLayout popup = new LinearLayout(c);
@@ -102,9 +102,12 @@ final class ConnectionPopup {
         popup.addView(picture, new LinearLayout.LayoutParams(imageW,imageH));
 
         TextView caption = new TextView(c);
-        String label = "Подключено";
-        if (battery >= 0 && battery <= 100) label += "  ·  " + battery + "%";
-        caption.setText(label);
+        // If the speaker provides no battery percentage, display the picture alone.
+        if (battery>=0 && battery<=100) {
+            caption.setText("Заряд: "+battery+"%");
+        } else {
+            caption.setVisibility(View.GONE);
+        }
         caption.setTextColor(Color.WHITE);
         caption.setGravity(Gravity.CENTER);
         caption.setTextSize(14);
