@@ -117,6 +117,7 @@ public class MainActivity extends Activity {
         firstScan=false;
         ui.removeCallbacks(refresh);
         ui.post(refresh);
+        ui.postDelayed(this::offerOverlayPermission,1600);
     }
     @Override protected void onPause() {
         visible=false;
@@ -424,6 +425,28 @@ public class MainActivity extends Activity {
             permissionRequestActive=false;
             ui.postDelayed(this::validatePermissions,350);
         }
+    }
+    private void offerOverlayPermission() {
+        if (!visible || !missing().isEmpty() || ConnectionPopup.isAllowed(this)) return;
+        final String key = "overlay_prompt_seen";
+        if (getPreferences(MODE_PRIVATE).getBoolean(key,false)) return;
+        getPreferences(MODE_PRIVATE).edit().putBoolean(key,true).apply();
+        new AlertDialog.Builder(this)
+            .setTitle("Окно подключения")
+            .setMessage("Чтобы показывать маленькое всплывающее изображение подключённой колонки поверх главного экрана ТВ, разрешите отображение поверх других приложений. Если телевизор не поддерживает это разрешение, автоматическое подключение продолжит работать.")
+            .setNegativeButton("Не сейчас",null)
+            .setPositiveButton("Разрешить",(dialog,which)->{
+                try {
+                    Intent i=new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                        Uri.parse("package:"+getPackageName()));
+                    startActivity(i);
+                } catch (RuntimeException e) {
+                    try {
+                        startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                            Uri.parse("package:"+getPackageName())));
+                    } catch (RuntimeException ignored) { toast("Настройки наложения недоступны"); }
+                }
+            }).show();
     }
     private void startScan() {
         if (!visible || !missing().isEmpty()) { validatePermissions(); return; }
