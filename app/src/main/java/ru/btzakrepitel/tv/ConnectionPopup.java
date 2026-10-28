@@ -80,7 +80,9 @@ final class ConnectionPopup {
         int image = normal.equals("jbl flip 6") ? R.drawable.product_jbl_flip6_blue :
             (normal.equals("станция мини 3 про") ||
              normal.equals("яндекс станция мини 3 про") ||
-             normal.equals("mini 3 pro")) ? R.drawable.product_yandex_mini3pro :
+             normal.equals("mini 3 pro") ||
+             normal.equals("станция mini 3 pro") ||
+             normal.equals("яндекс станция mini 3 pro")) ? R.drawable.photo_yandex_mini3pro :
              R.drawable.bt_generic;
         picture.setImageResource(image);
         popup.addView(picture, new LinearLayout.LayoutParams(imageW,imageH));
