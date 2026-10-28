@@ -18,5 +18,19 @@ public class BootReceiver extends BroadcastReceiver {
                 Prefs.addLog(c, "Автозапуск отклонён: " + e.getClass().getSimpleName());
             }
         }
+        // Restore only if the audio effect was actually active previously.
+        if (Intent.ACTION_BOOT_COMPLETED.equals(action) ||
+                Intent.ACTION_MY_PACKAGE_REPLACED.equals(action)) {
+            android.content.SharedPreferences bp=c.getSharedPreferences("boost",Context.MODE_PRIVATE);
+            if(bp.getBoolean("running",false) && bp.getInt("level",0)>0) {
+                try {
+                    Intent boost=new Intent(c,BoostService.class);
+                    boost.setAction(BoostService.ACTION_SET);
+                    boost.putExtra("gain",bp.getInt("level",0));
+                    if(Build.VERSION.SDK_INT>=26)c.startForegroundService(boost);
+                    else c.startService(boost);
+                }catch(RuntimeException ignored){}
+            }
+        }
     }
 }
