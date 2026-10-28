@@ -3,11 +3,11 @@ android {
     namespace 'ru.btzakrepitel.tv'
     compileSdk 35
     defaultConfig {
-        applicationId 'ru.btzakrepitel.tv'
+        applicationId 'ru.frolov.tvaudiocenter.louder12'
         minSdk 26
         targetSdk 32
-        versionCode 4
-        versionName '0.4-test'
+        versionCode 5
+        versionName '1.3.0'
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
