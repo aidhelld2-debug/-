@@ -490,7 +490,7 @@ public class MainActivity extends Activity {
         devices.removeAllViews();
         countLabel.setText("Найдено: "+found.size());
         scanStatus.setText(scanning?"Поиск устройств…":
-            (found.isEmpty()?"Включите колонку и повторите поиск.":"Нажмите красную 📌, чтобы закрепить колонку"));
+            (found.isEmpty()?"Включите колонку и повторите поиск.":"Выберите карточку для закрепления. Красная кнопка показывается только у закреплённой."));
         if(found.isEmpty()){
             LinearLayout empty=panel();
             TextView bluetooth=label("ᛒ",50,ACCENT);
@@ -521,29 +521,31 @@ public class MainActivity extends Activity {
                 focusStyle(card,false,CARD,17);
                 card.setFocusable(true);
                 card.setTag(address);
-                card.setOnClickListener(v->pinDevice(d));
+                card.setOnClickListener(v->{ if(!pinned)pinDevice(d); });
                 final LinearLayout cardRef=card;
                 View.OnFocusChangeListener handleFocus=(v,focus)->{
                     focusStyle(cardRef,focus,CARD,17);
                 };
                 card.setOnFocusChangeListener(handleFocus);
-                Button pin=button("📌",()->pinDevice(d));
-                pin.setContentDescription("Закрепить "+name);
-                pin.setTextSize(28);
-                pin.setTextColor(Color.WHITE);
-                pin.setPadding(0,0,0,0);
-                pin.setBackground(background(0xFFF12C43,0xFFFF6C74,1,14));
-                pin.setTag(address);
-                pin.setOnFocusChangeListener((v,focus)->{
-                    focusStyle(cardRef,focus,CARD,17);
-                    pin.setBackground(background(focus?0xFFFF4757:0xFFF12C43,
-                        focus?Color.WHITE:0xFFFF6C74,focus?3:1,14));
-                    pin.setScaleX(focus?1.1f:1f);
-                    pin.setScaleY(focus?1.1f:1f);
-                });
-                pin.setEnabled(bonded);
-                if(!bonded)pin.setAlpha(0.55f);
-                card.addView(pin,new LinearLayout.LayoutParams(px(64),px(65)));
+                // Только закреплённое устройство имеет красную кнопку.
+                // История Bluetooth-сопряжений не является признаком закрепления.
+                if (pinned) {
+                    Button pin=button("📌",()->unpinDevice(address));
+                    pin.setContentDescription("Снять закрепление: "+name);
+                    pin.setTextSize(28);
+                    pin.setTextColor(Color.WHITE);
+                    pin.setPadding(0,0,0,0);
+                    pin.setBackground(background(0xFFF12C43,0xFFFF6C74,1,14));
+                    pin.setTag(address);
+                    pin.setOnFocusChangeListener((v,focus)->{
+                        focusStyle(cardRef,focus,CARD,17);
+                        pin.setBackground(background(focus?0xFFFF4757:0xFFF12C43,
+                            focus?Color.WHITE:0xFFFF6C74,focus?3:1,14));
+                        pin.setScaleX(focus?1.1f:1f);
+                        pin.setScaleY(focus?1.1f:1f);
+                    });
+                    card.addView(pin,new LinearLayout.LayoutParams(px(64),px(65)));
+                }
 
                 String normalized=name.toLowerCase(java.util.Locale.ROOT).replace('ё','е');
                 boolean jbl=normalized.equals("jbl flip 6");
@@ -599,6 +601,15 @@ public class MainActivity extends Activity {
                 if(addr.equalsIgnoreCase(device.getAddress()))return true;
         } catch(SecurityException ignored){}
         return false;
+    }
+    private void unpinDevice(String address) {
+        if (!address.equalsIgnoreCase(Prefs.address(this))) return;
+        stopService(new Intent(this,MonitorService.class));
+        Prefs.unpin(this);
+        Prefs.addLog(this,"Закрепление снято");
+        deviceSignature="";
+        updateDeviceList();
+        showStatus();
     }
     private void pinDevice(BluetoothDevice d) {
         try {
