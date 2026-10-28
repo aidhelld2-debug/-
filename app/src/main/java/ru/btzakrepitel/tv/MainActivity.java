@@ -163,6 +163,24 @@ public class MainActivity extends Activity {
         view.setScaleY(isFocused?1.015f:1f);
         view.setElevation(px(isFocused?14:2));
     }
+
+    /** Neutral grey button with an actual red round insert when pinned.
+     * No checkmark, emoji or font-dependent glyph. */
+    private android.graphics.drawable.Drawable pinSquare(boolean pinned, boolean focused) {
+        GradientDrawable grey=background(focused?0xFF647583:0xFF56616D,
+            focused?0xFF41F3F4:0xFF7C8996,focused?3:1,12);
+        if(!pinned)return grey;
+        GradientDrawable red=new GradientDrawable();
+        red.setShape(GradientDrawable.OVAL);
+        red.setColor(0xFFF3364E);
+        red.setStroke(px(2),0xFFFF8B98);
+        android.graphics.drawable.LayerDrawable combo=
+            new android.graphics.drawable.LayerDrawable(
+                new android.graphics.drawable.Drawable[]{grey,red});
+        combo.setLayerInset(1,px(19),px(19),px(19),px(19));
+        return combo;
+    }
+
     private Button tvAction(String title, String detail, int backgroundColor, Runnable click) {
         Button b=button(title+(detail.isEmpty()?"":"\n"+detail),click);
         b.setTextSize(16);
@@ -583,18 +601,17 @@ public class MainActivity extends Activity {
 
                 // Always show a neutral grey pin control. Pinned = RED ROUND
                 // BUTTON, NOT a check mark or a red square.
-                Button pin=button(pinned?"●":"",()->{
+                Button pin=button("",()->{
                     if(address.equalsIgnoreCase(Prefs.address(this))) unpinDevice(address);
                     else pinDevice(d);
                 });
                 pin.setId(View.generateViewId());
                 pin.setTag(address+"|pin");
                 pin.setContentDescription(pinned?"Открепить "+name:"Закрепить "+name);
-                pin.setTextColor(0xFFFF394F);
-                pin.setTextSize(35);
+
                 pin.setPadding(0,0,0,0);
                 pin.setFocusable(true);
-                pin.setBackground(background(0xFF56616D,0xFF7C8996,1,12));
+                pin.setBackground(pinSquare(pinned,false));
                 card.addView(pin,new LinearLayout.LayoutParams(px(65),px(65)));
 
                 LinearLayout body=new LinearLayout(this);
@@ -614,8 +631,7 @@ public class MainActivity extends Activity {
                 body.setOnFocusChangeListener((v,focus)->focusStyle(card,focus,CARD,17));
                 pin.setOnFocusChangeListener((v,focus)->{
                     focusStyle(card,focus,CARD,17);
-                    pin.setBackground(background(focus?0xFF647583:0xFF56616D,
-                        focus?0xFF41F3F4:0xFF7C8996,focus?3:1,12));
+                    pin.setBackground(pinSquare(pinned,focus));
                 });
 
                 String normalized=name.toLowerCase(java.util.Locale.ROOT).replace('ё','е');
