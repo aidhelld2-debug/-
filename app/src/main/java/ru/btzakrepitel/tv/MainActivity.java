@@ -219,10 +219,10 @@ public class MainActivity extends Activity {
         LinearLayout titles=new LinearLayout(this);
         titles.setOrientation(LinearLayout.VERTICAL);
         titles.setPadding(px(15),0,0,0);
-        TextView title=label("BT Закрепитель",31,LIGHT);
+        TextView title=label("Аудио ТВ",31,LIGHT);
         title.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
         titles.addView(title);
-        titles.addView(label("Автоматическое переподключение Bluetooth",16,MUTED));
+        titles.addView(label("Усиление звука и подключение Bluetooth",16,MUTED));
         bar.addView(titles,new LinearLayout.LayoutParams(0,-2,1));
         bluetoothPill=label("ᛒ Bluetooth",17,ACCENT);
         bluetoothPill.setPadding(px(18),px(10),px(18),px(10));
@@ -261,9 +261,13 @@ public class MainActivity extends Activity {
         listParams.topMargin=px(7);
         left.addView(listScroll,listParams);
 
+        ScrollView rightScroll=new ScrollView(this);
+        rightScroll.setFillViewport(false);
+        rightScroll.setClipToPadding(false);
         LinearLayout right=new LinearLayout(this);
         right.setOrientation(LinearLayout.VERTICAL);
-        two.addView(right,new LinearLayout.LayoutParams(0,-1,1.0f));
+        rightScroll.addView(right);
+        two.addView(rightScroll,new LinearLayout.LayoutParams(0,-1,1.0f));
         LinearLayout state=panel();
         state.addView(heading("Состояние"));
         status=label("",17,LIGHT);
@@ -290,6 +294,41 @@ public class MainActivity extends Activity {
         actionsParams.topMargin=px(13);
         right.addView(actions,actionsParams);
 
+
+        LinearLayout boostPanel=panel();
+        boostPanel.addView(heading("Усилитель громкости"));
+        TextView boostStatus=label("Проверка эффекта…",14,MUTED);
+        int storedBoost=getSharedPreferences("boost",MODE_PRIVATE).getInt("level",0);
+        boolean boosting=getSharedPreferences("boost",MODE_PRIVATE).getBoolean("running",false);
+        boostStatus.setText(boosting?"Активно: +"+storedBoost+" дБ":
+            "Выключен · зависит от поддержки аудиоэффекта телевизором");
+        boostPanel.addView(boostStatus);
+        LinearLayout boostRow=new LinearLayout(this);
+        boostRow.setOrientation(LinearLayout.HORIZONTAL);
+        for(int gain:new int[]{6,10,16,20}) {
+            Button levelButton=tvAction("+"+gain+" дБ","",0xFF16485B,()->{
+                Intent effect=new Intent(this,BoostService.class);
+                effect.setAction(BoostService.ACTION_SET);
+                effect.putExtra("gain",gain);
+                try{ if(Build.VERSION.SDK_INT>=26) startForegroundService(effect);
+                    else startService(effect);
+                    boostStatus.setText("Запрос +"+gain+" дБ отправлен");
+                }catch(RuntimeException e){boostStatus.setText("Эффект недоступен: "+e.getClass().getSimpleName());}
+            });
+            LinearLayout.LayoutParams weight=new LinearLayout.LayoutParams(0,px(64),1);
+            weight.rightMargin=px(4);
+            boostRow.addView(levelButton,weight);
+        }
+        boostPanel.addView(boostRow);
+        boostPanel.addView(tvAction("■ Выключить усиление","",0xFF472A36,()->{
+            Intent effect=new Intent(this,BoostService.class);
+            effect.setAction(BoostService.ACTION_STOP);
+            try{startService(effect);}catch(RuntimeException ignored){}
+            boostStatus.setText("Усиление выключено");
+        }));
+        LinearLayout.LayoutParams boostParams=new LinearLayout.LayoutParams(-1,-2);
+        boostParams.topMargin=px(13);
+        right.addView(boostPanel,boostParams);
         LinearLayout diagnostics=panel();
         diagnostics.addView(heading("Журнал"));
         logs=label("",14,MUTED);
@@ -498,102 +537,84 @@ public class MainActivity extends Activity {
         }));
         StringBuilder signature=new StringBuilder();
         for(Nearby n:found) {
-            try {
-                signature.append(n.device.getAddress()).append(n.device.getBondState())
-                    .append(n.device.getAddress().equalsIgnoreCase(Prefs.address(this))).append(';');
-            } catch(SecurityException ignored){}
-        }
-        String sign=signature.toString();
-        if(sign.equals(deviceSignature))return; // preserve remote focus when 3-second status refresh runs
-        String focusedAddress=null;
-        View prevFocus=getCurrentFocus();
-        if(prevFocus!=null && prevFocus.getTag() instanceof String)
-            focusedAddress=(String)prevFocus.getTag();
-        deviceSignature=sign;
-        devices.removeAllViews();
-        countLabel.setText("Найдено: "+found.size());
-        scanStatus.setText(scanning?"Поиск устройств…":
-            (found.isEmpty()?"Включите колонку и повторите поиск.":"Выберите карточку для закрепления. Красная кнопка показывается только у закреплённой."));
-        if(found.isEmpty()){
-            LinearLayout empty=panel();
-            TextView bluetooth=label("ᛒ",50,ACCENT);
-            bluetooth.setGravity(Gravity.CENTER);
-            empty.addView(bluetooth);
-            TextView emptyTitle=heading("Устройства не найдены");
-            emptyTitle.setGravity(Gravity.CENTER);
-            empty.addView(emptyTitle);
-            TextView explain=label("Включите колонку. Если она не появилась, переведите её в режим обнаружения Bluetooth.",16,MUTED);
-            explain.setGravity(Gravity.CENTER);
-            empty.addView(explain);
-            devices.addView(empty);
-            return;
-        }
-        for(Nearby n:found) {
             BluetoothDevice d=n.device;
             try {
                 String rawName=d.getName();
-                final String name=(rawName==null||rawName.trim().isEmpty())?
-                    "Bluetooth-устройство":rawName.trim();
+                final String name=(rawName==null||rawName.trim().isEmpty())
+                    ? "Bluetooth-устройство":rawName.trim();
                 String address=d.getAddress();
                 boolean bonded=d.getBondState()==BluetoothDevice.BOND_BONDED;
                 boolean pinned=address.equalsIgnoreCase(Prefs.address(this));
+
                 LinearLayout card=new LinearLayout(this);
                 card.setOrientation(LinearLayout.HORIZONTAL);
                 card.setGravity(Gravity.CENTER_VERTICAL);
-                card.setPadding(px(14),px(9),px(12),px(9));
+                card.setPadding(px(12),px(9),px(12),px(9));
+                card.setFocusable(false);
                 focusStyle(card,false,CARD,17);
-                card.setFocusable(true);
-                card.setTag(address);
-                card.setOnClickListener(v->{ if(!pinned)pinDevice(d); });
-                final LinearLayout cardRef=card;
-                View.OnFocusChangeListener handleFocus=(v,focus)->{
-                    focusStyle(cardRef,focus,CARD,17);
-                };
-                card.setOnFocusChangeListener(handleFocus);
-                // Только закреплённое устройство имеет красную кнопку.
-                // История Bluetooth-сопряжений не является признаком закрепления.
-                if (pinned) {
-                    Button pin=button("📌",()->unpinDevice(address));
-                    pin.setContentDescription("Снять закрепление: "+name);
-                    pin.setTextSize(28);
-                    pin.setTextColor(Color.WHITE);
-                    pin.setPadding(0,0,0,0);
-                    pin.setBackground(background(0xFFF12C43,0xFFFF6C74,1,14));
-                    pin.setTag(address);
-                    pin.setOnFocusChangeListener((v,focus)->{
-                        focusStyle(cardRef,focus,CARD,17);
-                        pin.setBackground(background(focus?0xFFFF4757:0xFFF12C43,
-                            focus?Color.WHITE:0xFFFF6C74,focus?3:1,14));
-                        pin.setScaleX(focus?1.1f:1f);
-                        pin.setScaleY(focus?1.1f:1f);
-                    });
-                    card.addView(pin,new LinearLayout.LayoutParams(px(64),px(65)));
-                }
+
+                // Always show a neutral grey pin control. Pinned = RED ROUND
+                // BUTTON, NOT a check mark or a red square.
+                Button pin=button(pinned?"●":"",()->{
+                    if(address.equalsIgnoreCase(Prefs.address(this))) unpinDevice(address);
+                    else pinDevice(d);
+                });
+                pin.setId(View.generateViewId());
+                pin.setTag(address+"|pin");
+                pin.setContentDescription(pinned?"Открепить "+name:"Закрепить "+name);
+                pin.setTextColor(0xFFFF394F);
+                pin.setTextSize(35);
+                pin.setPadding(0,0,0,0);
+                pin.setFocusable(true);
+                pin.setBackground(background(0xFF56616D,0xFF7C8996,1,12));
+                card.addView(pin,new LinearLayout.LayoutParams(px(65),px(65)));
+
+                LinearLayout body=new LinearLayout(this);
+                body.setId(View.generateViewId());
+                body.setTag(address+"|body");
+                body.setOrientation(LinearLayout.HORIZONTAL);
+                body.setGravity(Gravity.CENTER_VERTICAL);
+                body.setPadding(px(5),0,0,0);
+                body.setFocusable(true);
+                body.setClickable(true);
+                body.setOnClickListener(v->{
+                    if(!address.equalsIgnoreCase(Prefs.address(this))) pinDevice(d);
+                    else startMonitor(true);
+                });
+                body.setNextFocusLeftId(pin.getId());
+                pin.setNextFocusRightId(body.getId());
+                body.setOnFocusChangeListener((v,focus)->focusStyle(card,focus,CARD,17));
+                pin.setOnFocusChangeListener((v,focus)->{
+                    focusStyle(card,focus,CARD,17);
+                    pin.setBackground(background(focus?0xFF647583:0xFF56616D,
+                        focus?0xFF41F3F4:0xFF7C8996,focus?3:1,12));
+                });
 
                 String normalized=name.toLowerCase(java.util.Locale.ROOT).replace('ё','е');
                 boolean jbl=normalized.equals("jbl flip 6");
-                // Actual Bluetooth name from user's Samsung screenshot: "Станция Мини 3 Про".
                 boolean mini=normalized.equals("станция мини 3 про")
                     || normalized.equals("яндекс станция мини 3 про")
-                    || normalized.equals("mini 3 pro");
+                    || normalized.equals("mini 3 pro")
+                    || normalized.equals("станция mini 3 pro")
+                    || normalized.equals("яндекс станция mini 3 pro");
                 if(jbl||mini) {
                     ImageView product=new ImageView(this);
                     product.setScaleType(ImageView.ScaleType.FIT_CENTER);
-                    product.setImageResource(jbl?R.drawable.product_jbl_flip6_blue:R.drawable.product_yandex_mini3pro);
+                    product.setImageResource(jbl?R.drawable.product_jbl_flip6_blue:
+                        R.drawable.photo_yandex_mini3pro);
                     LinearLayout.LayoutParams img=new LinearLayout.LayoutParams(
-                        jbl?px(138):px(105),px(77));
-                    img.leftMargin=px(9);
-                    img.rightMargin=px(10);
-                    card.addView(product,img);
+                        jbl?px(138):px(112),px(82));
+                    img.leftMargin=px(7);
+                    img.rightMargin=px(8);
+                    body.addView(product,img);
                 } else {
                     ImageView generic=new ImageView(this);
                     generic.setImageResource(R.drawable.bt_generic);
                     generic.setPadding(px(12),px(12),px(12),px(12));
                     generic.setBackground(background(0xFF1A3D56,0xFF28485A,1,16));
                     LinearLayout.LayoutParams img=new LinearLayout.LayoutParams(px(70),px(70));
-                    img.leftMargin=px(18);
-                    img.rightMargin=px(16);
-                    card.addView(generic,img);
+                    img.leftMargin=px(10);img.rightMargin=px(12);
+                    body.addView(generic,img);
                 }
                 LinearLayout textColumn=new LinearLayout(this);
                 textColumn.setOrientation(LinearLayout.VERTICAL);
@@ -601,22 +622,22 @@ public class MainActivity extends Activity {
                 deviceName.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
                 textColumn.addView(deviceName);
                 boolean connected=isConnectedA2dp(address);
-                String line=(connected?"● Подключено":(bonded?"● Сопряжено · рядом":"● Не сопряжено"));
-                TextView deviceStatus=label(line,15,
-                    connected?0xFF39D5FF:(bonded?0xFF32E7B5:MUTED));
-                textColumn.addView(deviceStatus);
-                if(pinned)textColumn.addView(label("📌 Закреплено",13,ACCENT));
-                LinearLayout.LayoutParams textParams=new LinearLayout.LayoutParams(0,-2,1);
-                card.addView(textColumn,textParams);
-                TextView arrow=label("›",35,0xFF8DAFC9);
-                card.addView(arrow);
+                String line=connected?"● Подключено":bonded?"● Сопряжено · рядом":"● Не сопряжено";
+                textColumn.addView(label(line,15,
+                    connected?0xFF39D5FF:bonded?0xFF32E7B5:MUTED));
+                if(pinned)textColumn.addView(label("Закреплено",13,ACCENT));
+                body.addView(textColumn,new LinearLayout.LayoutParams(0,-2,1));
+                body.addView(label("›",35,0xFF8DAFC9));
+                card.addView(body,new LinearLayout.LayoutParams(0,-1,1));
                 LinearLayout.LayoutParams cardParams=new LinearLayout.LayoutParams(-1,px(102));
                 cardParams.bottomMargin=px(12);
                 devices.addView(card,cardParams);
-                if(address.equals(focusedAddress)) card.requestFocus();
+                if((address+"|pin").equals(focusedTag)) pin.requestFocus();
+                else if((address+"|body").equals(focusedTag)) body.requestFocus();
             } catch(SecurityException ignored) {}
         }
     }
+
     private boolean isConnectedA2dp(String addr) {
         if(a2dp==null||!hasBluetoothConnect())return false;
         try {
