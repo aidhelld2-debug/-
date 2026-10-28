@@ -62,14 +62,18 @@ public class MonitorService extends Service {
             } else if (BluetoothA2dp.ACTION_CONNECTION_STATE_CHANGED.equals(intent.getAction())) {
                 try {
                     BluetoothDevice d = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
-                    if (d != null && d.getAddress().equalsIgnoreCase(Prefs.address(context))) {
+                    if (d != null) {
                         int state = intent.getIntExtra(BluetoothProfile.EXTRA_STATE,-1);
                         if (state == BluetoothProfile.STATE_CONNECTED) {
-                            report("✓ Колонка подключена");
+                            if (d.getAddress().equalsIgnoreCase(Prefs.address(context)))
+                                report("Колонка подключена");
+                            // Show the actual connected speaker even if the pinned
+                            // device is different. Only genuinely available battery data.
                             ConnectionPopup.show(context,d);
-                        }
-                        if (state == BluetoothProfile.STATE_DISCONNECTED)
+                        } else if (state == BluetoothProfile.STATE_DISCONNECTED &&
+                                   d.getAddress().equalsIgnoreCase(Prefs.address(context))) {
                             handler.postDelayed(() -> poll(),3000);
+                        }
                     }
                 } catch (SecurityException e) { report("Нет Bluetooth-разрешения"); }
             }
