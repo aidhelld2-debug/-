@@ -64,7 +64,10 @@ public class MonitorService extends Service {
                     BluetoothDevice d = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
                     if (d != null && d.getAddress().equalsIgnoreCase(Prefs.address(context))) {
                         int state = intent.getIntExtra(BluetoothProfile.EXTRA_STATE,-1);
-                        if (state == BluetoothProfile.STATE_CONNECTED) report("✓ Колонка подключена");
+                        if (state == BluetoothProfile.STATE_CONNECTED) {
+                            report("✓ Колонка подключена");
+                            ConnectionPopup.show(context,d);
+                        }
                         if (state == BluetoothProfile.STATE_DISCONNECTED)
                             handler.postDelayed(() -> poll(),3000);
                     }
