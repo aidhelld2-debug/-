@@ -44,11 +44,25 @@ final class ConnectionPopup {
             String n = device.getName();
             name = n == null || n.trim().isEmpty() ? "Bluetooth-устройство" : n.trim();
             // -1 means the Bluetooth stack did not report battery information.
-            battery = Build.VERSION.SDK_INT >= 26 ? device.getBatteryLevel() : -1;
+            battery = reportedBattery(device);
         } catch (SecurityException e) {
             return;
         }
         MAIN.post(() -> render(c, address, name, battery));
+    }
+
+    // Android hides getBatteryLevel() in some SDKs, so call it only when the
+    // firmware exports it. No reported value = no percent on screen.
+    private static int reportedBattery(BluetoothDevice device) {
+        try {
+            java.lang.reflect.Method m=BluetoothDevice.class.getMethod("getBatteryLevel");
+            Object v=m.invoke(device);
+            if(v instanceof Integer) {
+                int b=(Integer)v;
+                return b>=0 && b<=100?b:-1;
+            }
+        } catch(ReflectiveOperationException | SecurityException ignored) {}
+        return -1;
     }
 
     private static void render(Context c, String addr, String name, int battery) {
