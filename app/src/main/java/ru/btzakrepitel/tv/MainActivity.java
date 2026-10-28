@@ -537,6 +537,34 @@ public class MainActivity extends Activity {
         }));
         StringBuilder signature=new StringBuilder();
         for(Nearby n:found) {
+            try {
+                signature.append(n.device.getAddress()).append(n.device.getBondState())
+                    .append(n.device.getAddress().equalsIgnoreCase(Prefs.address(this))).append(';');
+            }catch(SecurityException ignored){}
+        }
+        String sign=signature.toString();
+        if(sign.equals(deviceSignature))return; // never steal D-pad focus each refresh
+        String focusedTag=null;
+        View prevFocus=getCurrentFocus();
+        if(prevFocus!=null && prevFocus.getTag() instanceof String)
+            focusedTag=(String)prevFocus.getTag();
+        deviceSignature=sign;
+        devices.removeAllViews();
+        countLabel.setText("Найдено: "+found.size());
+        scanStatus.setText(scanning?"Поиск устройств…":
+            (found.isEmpty()?"Включите колонку и повторите поиск.":"Серый квадрат — закрепление; красная круглая кнопка — закреплено."));
+        if(found.isEmpty()){
+            LinearLayout empty=panel();
+            TextView bluetooth=label("ᛒ",50,ACCENT);
+            bluetooth.setGravity(Gravity.CENTER); empty.addView(bluetooth);
+            TextView emptyTitle=heading("Устройства не найдены");
+            emptyTitle.setGravity(Gravity.CENTER);empty.addView(emptyTitle);
+            TextView explain=label("Включите колонку. Если она не появилась, переведите её в режим обнаружения Bluetooth.",16,MUTED);
+            explain.setGravity(Gravity.CENTER);empty.addView(explain);
+            devices.addView(empty);
+            return;
+        }
+        for(Nearby n:found) {
             BluetoothDevice d=n.device;
             try {
                 String rawName=d.getName();
