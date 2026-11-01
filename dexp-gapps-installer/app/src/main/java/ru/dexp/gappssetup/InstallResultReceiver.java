@@ -17,19 +17,19 @@ public class InstallResultReceiver extends BroadcastReceiver {
                 confirm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 try {
                     context.startActivity(confirm);
-                    MainActivity.onInstallStatus("Подтвердите установку: " + part);
+                    FireInstallerActivity.reportResult("Подтвердите установку: " + part);
                 } catch (Exception ex) {
-                    MainActivity.onInstallStatus("Не удалось открыть установку: " + ex.getMessage());
+                    FireInstallerActivity.reportResult("Не удалось открыть установку: " + ex.getMessage());
                 }
             } else {
-                MainActivity.onInstallStatus("Система не предоставила подтверждение: " + part);
+                FireInstallerActivity.reportResult("Система не предоставила подтверждение: " + part);
             }
         } else if (result == PackageInstaller.STATUS_SUCCESS) {
-            MainActivity.onInstallStatus("Установлено: " + part);
+            FireInstallerActivity.reportResult("Установлено: " + part);
             Toast.makeText(context, "Установлено: " + part, Toast.LENGTH_LONG).show();
         } else {
             String reason = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE);
-            MainActivity.onInstallStatus("Ошибка установки " + part + ": " + result + " / " + reason);
+            FireInstallerActivity.reportResult("Ошибка установки " + part + ": " + result + " / " + reason);
             Toast.makeText(context, "Ошибка: " + reason, Toast.LENGTH_LONG).show();
         }
     }
