@@ -34,3 +34,22 @@ jobs:
               if ('gapp' in file.filename.lower() or file.filename.lower().endswith('.apk') or file.filename.lower().endswith('.apkm')):
                 print('CONTENTS', file.filename, file.file_size)
           PY
+      - name: Find original Google Account Manager 7.1.2
+        run: |
+          python3 - <<'PY'
+          import requests,hashlib
+          urls=[
+            'https://d.apkpure.com/b/APK/com.google.android.gsf.login?version=latest',
+            'https://d.apkpure.com/b/APK/com.google.android.gsf.login?version=7.1.2',
+            'https://d.apkpure.com/b/APK/com.google.android.gsf.login?versionCode=25',
+            'https://www.apkmirror.com/apk/google-inc/google-account-manager/google-account-manager-7-1-2-release/google-account-manager-7-1-2-android-apk-download/'
+          ]
+          expected='3324ee2f67d23848ae3d9086f20ada10f2cb0dbb6d202067b918cc4fb4d167be'
+          for url in urls:
+            try:
+              r=requests.get(url,timeout=40)
+              print('SOURCE',url,'STATUS',r.status_code,'SIZE',len(r.content),'TYPE',r.headers.get('Content-Type'),'SHA',hashlib.sha256(r.content).hexdigest())
+              if hashlib.sha256(r.content).hexdigest()==expected:
+                print('VERIFIED ACCOUNT MANAGER SUCCESS'); break
+            except Exception as exc:print('ERROR',str(exc))
+          PY
