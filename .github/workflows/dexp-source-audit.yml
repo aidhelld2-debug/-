@@ -1,0 +1,34 @@
+name: Inspect public Fire-Tools GApps archive
+on:
+  push:
+    branches: [dexp-gapps-installer]
+  workflow_dispatch:
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download release archives
+        run: |
+          python3 - <<'PY'
+          import requests
+          api='https://api.github.com/repos/mrhaydendp/Fire-Tools/releases/latest'
+          r=requests.get(api,timeout=30);r.raise_for_status()
+          info=r.json();print('TAG',info['tag_name'])
+          for a in info['assets']:
+            print('ASSET',a['name'],a['size'],a['browser_download_url'])
+          matches=[a for a in info['assets'] if a['name'].lower().endswith('.zip') and 'source' not in a['name'].lower()]
+          if not matches: raise RuntimeError('No non-source ZIP')
+          a=matches[0]; print('DOWNLOADING',a['browser_download_url'])
+          with requests.get(a['browser_download_url'],stream=True,timeout=45) as data:
+            data.raise_for_status()
+            with open('/tmp/fire-tools.zip','wb') as f:
+              for ch in data.iter_content(1024*1024):
+                if ch:f.write(ch)
+          import zipfile
+          with zipfile.ZipFile('/tmp/fire-tools.zip') as z:
+            for file in z.infolist():
+              if ('gapp' in file.filename.lower() or file.filename.lower().endswith('.apk') or file.filename.lower().endswith('.apkm')):
+                print('CONTENTS', file.filename, file.file_size)
+          PY
