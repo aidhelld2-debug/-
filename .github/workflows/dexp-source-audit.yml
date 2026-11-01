@@ -33,6 +33,14 @@ jobs:
             for file in z.infolist():
               if ('gapp' in file.filename.lower() or file.filename.lower().endswith('.apk') or file.filename.lower().endswith('.apkm')):
                 print('CONTENTS', file.filename, file.file_size)
+                if file.filename.endswith('.apkm'):
+                  import io
+                  with zipfile.ZipFile(io.BytesIO(z.read(file.filename))) as sub:
+                    for i in sub.infolist():
+                      if i.filename.endswith('.apk') or i.filename.endswith('.json'):
+                        print('  SPLIT',i.filename,i.file_size)
+                    if 'info.json' in sub.namelist():print('  INFO', sub.read('info.json')[:3500].decode(errors='replace'))
+                    if 'manifest.json' in sub.namelist():print('  MANIFEST',sub.read('manifest.json')[:3500].decode(errors='replace'))
           PY
       - name: Find original Google Account Manager 7.1.2
         run: |
