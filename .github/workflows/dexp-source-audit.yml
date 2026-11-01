@@ -1,0 +1,65 @@
+name: Inspect public Fire-Tools GApps archive
+on:
+  push:
+    branches: [dexp-gapps-installer]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download release archives
+        run: |
+          python3 - <<'PY'
+          import requests
+          api='https://api.github.com/repos/mrhaydendp/Fire-Tools/releases/latest'
+          r=requests.get(api,timeout=30);r.raise_for_status()
+          info=r.json();print('TAG',info['tag_name'])
+          for a in info['assets']:
+            print('ASSET',a['name'],a['size'],a['browser_download_url'])
+          matches=[a for a in info['assets'] if a['name'].lower().endswith('.zip') and 'source' not in a['name'].lower()]
+          if not matches: raise RuntimeError('No non-source ZIP')
+          a=matches[0]; print('DOWNLOADING',a['browser_download_url'])
+          with requests.get(a['browser_download_url'],stream=True,timeout=45) as data:
+            data.raise_for_status()
+            with open('/tmp/fire-tools.zip','wb') as f:
+              for ch in data.iter_content(1024*1024):
+                if ch:f.write(ch)
+          import zipfile
+          with zipfile.ZipFile('/tmp/fire-tools.zip') as z:
+            for file in z.infolist():
+              if ('gapp' in file.filename.lower() or file.filename.lower().endswith('.apk') or file.filename.lower().endswith('.apkm')):
+                print('CONTENTS', file.filename, file.file_size)
+                if file.filename.endswith('.apkm'):
+                  import io
+                  with zipfile.ZipFile(io.BytesIO(z.read(file.filename))) as sub:
+                    for i in sub.infolist():
+                      if i.filename.endswith('.apk') or i.filename.endswith('.json'):
+                        print('  SPLIT',i.filename,i.file_size)
+                    if 'info.json' in sub.namelist():print('  INFO', sub.read('info.json')[:3500].decode(errors='replace'))
+                    if 'manifest.json' in sub.namelist():print('  MANIFEST',sub.read('manifest.json')[:3500].decode(errors='replace'))
+          PY
+      - name: Find original Google Account Manager 7.1.2
+        run: |
+          python3 - <<'PY'
+          import requests,hashlib
+          urls=[
+            'https://raw.githubusercontent.com/Sajedur0/FRP/refs/heads/main/Google_Account_Manager_7.1.2.apk',
+            'https://github.com/Sajedur0/FRP/raw/refs/heads/main/Google_Account_Manager_7.1.2.apk',
+            'https://d.apkpure.com/b/APK/com.google.android.gsf.login?version=latest',
+            'https://d.apkpure.com/b/APK/com.google.android.gsf.login?version=7.1.2',
+            'https://d.apkpure.com/b/APK/com.google.android.gsf.login?versionCode=25',
+            'https://www.apkmirror.com/apk/google-inc/google-account-manager/google-account-manager-7-1-2-release/google-account-manager-7-1-2-android-apk-download/'
+          ]
+          expected='3324ee2f67d23848ae3d9086f20ada10f2cb0dbb6d202067b918cc4fb4d167be'
+          for url in urls:
+            try:
+              r=requests.get(url,timeout=40)
+              print('SOURCE',url,'STATUS',r.status_code,'SIZE',len(r.content),'TYPE',r.headers.get('Content-Type'),'SHA',hashlib.sha256(r.content).hexdigest())
+              if hashlib.sha256(r.content).hexdigest()==expected:
+                print('VERIFIED ACCOUNT MANAGER SUCCESS'); break
+            except Exception as exc:print('ERROR',str(exc))
+          PY
