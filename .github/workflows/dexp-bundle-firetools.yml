@@ -1,0 +1,62 @@
+name: Build verified Fire-Tools GApps installer (DEXP)
+on:
+  push:
+    branches: [dexp-gapps-installer]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+jobs:
+  build-and-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Download and hash-verify exact four GApps
+        run: |
+          python -m pip install --quiet requests
+          python dexp-gapps-installer/tools/download_verified_gapps.py
+      - name: Verify original Google APK signatures
+        shell: bash
+        run: |
+          set -euo pipefail
+          for f in dexp-gapps-installer/app/src/main/assets/*/*.apk; do
+            echo "Checking Google signature: $f"
+            "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs --min-sdk-version 30 "$f"
+          done
+      - name: Compile installer (APK, signed by Android Gradle Plugin)
+        run: gradle --no-daemon -p dexp-gapps-installer :app:assembleDebug
+      - name: Validate wrapper package signing and assets
+        run: |
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --min-sdk-version 30 dexp-gapps-installer/app/build/outputs/apk/debug/app-debug.apk
+          unzip -Z1 dexp-gapps-installer/app/build/outputs/apk/debug/app-debug.apk | grep '^assets/' | sort
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=1"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Android 11 launch + no crash
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 30
+          target: google_apis
+          arch: x86_64
+          script: |
+            adb install -r dexp-gapps-installer/app/build/outputs/apk/debug/app-debug.apk
+            adb shell am start -n ru.dexp.gappssetup.firetools/ru.dexp.gappssetup.FireInstallerActivity
+            sleep 8
+            adb shell pidof ru.dexp.gappssetup.firetools | grep -E '[0-9]'
+            adb logcat -d -s AndroidRuntime:E > /tmp/android_errors.txt
+            ! grep -A 8 'Process: ru.dexp.gappssetup.firetools' /tmp/android_errors.txt
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: DEXP-FireTools-GApps-Four-Components-APK
+          path: dexp-gapps-installer/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 2
