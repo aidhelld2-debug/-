@@ -2,6 +2,8 @@ name: Inspect public Fire-Tools GApps archive
 on:
   push:
     branches: [dexp-gapps-installer]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 jobs:
   audit:
