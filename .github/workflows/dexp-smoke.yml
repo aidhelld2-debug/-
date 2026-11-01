@@ -44,8 +44,8 @@ jobs:
           arch: x86_64
           script: |
             adb install -r dexp-gapps-installer/app/build/outputs/apk/debug/app-v2-signed.apk
-            adb shell am start -n ru.dexp.gappssetup/.MainActivity
+            adb shell am start -n ru.dexp.gappssetup.firetools/ru.dexp.gappssetup.FireInstallerActivity
             sleep 8
-            adb shell pidof ru.dexp.gappssetup | grep -E '[0-9]'
+            adb shell pidof ru.dexp.gappssetup.firetools | grep -E '[0-9]'
             adb logcat -d -s AndroidRuntime:E > /tmp/android_errors.txt
-            ! grep -A 8 'Process: ru.dexp.gappssetup' /tmp/android_errors.txt
+            ! grep -A 8 'Process: ru.dexp.gappssetup.firetools' /tmp/android_errors.txt
