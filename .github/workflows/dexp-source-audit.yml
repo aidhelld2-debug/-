@@ -47,6 +47,8 @@ jobs:
           python3 - <<'PY'
           import requests,hashlib
           urls=[
+            'https://raw.githubusercontent.com/Sajedur0/FRP/refs/heads/main/Google_Account_Manager_7.1.2.apk',
+            'https://github.com/Sajedur0/FRP/raw/refs/heads/main/Google_Account_Manager_7.1.2.apk',
             'https://d.apkpure.com/b/APK/com.google.android.gsf.login?version=latest',
             'https://d.apkpure.com/b/APK/com.google.android.gsf.login?version=7.1.2',
             'https://d.apkpure.com/b/APK/com.google.android.gsf.login?versionCode=25',
