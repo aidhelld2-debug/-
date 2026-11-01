@@ -5,13 +5,13 @@
     <uses-feature android:name="android.software.leanback" android:required="false"/>
     <application android:label="Google Play: установка" android:allowBackup="false"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
-        <activity android:name=".MainActivity" android:exported="true">
+        <activity android:name="ru.dexp.gappssetup.FireInstallerActivity" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER"/>
             </intent-filter>
         </activity>
-        <receiver android:name=".InstallResultReceiver" android:exported="false"/>
+        <receiver android:name="ru.dexp.gappssetup.InstallResultReceiver" android:exported="false"/>
     </application>
 </manifest>
