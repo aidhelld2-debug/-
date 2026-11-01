@@ -3,6 +3,8 @@ name: DEXP installer Android 11 smoke test
 on:
   push:
     branches: [dexp-gapps-installer]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 jobs:
